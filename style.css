@@ -32,9 +32,7 @@ h1, h2, h3 { color: #FFFFFF !important; font-weight: 600; }
 [data-testid="stDivider"] { margin: 0.5rem 0; }
 
 /* --- LOGO --- */
-.logo-box {
-    width: 50px;
-    height: 50px;
+.logo-box, .logo-box-large {
     background-color: var(--primary-color);
     border-radius: var(--border-radius);
     display: flex;
@@ -42,11 +40,12 @@ h1, h2, h3 { color: #FFFFFF !important; font-weight: 600; }
     justify-content: center;
     margin-bottom: 1rem;
 }
-.logo-text {
-    font-size: 28px;
-    font-weight: 700;
-    color: white;
-}
+.logo-box { width: 50px; height: 50px; }
+.logo-box-large { width: 80px; height: 80px; margin: 1rem auto; }
+.logo-text, .logo-text-large { font-weight: 700; color: white; }
+.logo-text { font-size: 28px; }
+.logo-text-large { font-size: 48px; }
+
 
 /* --- DASHBOARD --- */
 .course-card {
@@ -57,6 +56,9 @@ h1, h2, h3 { color: #FFFFFF !important; font-weight: 600; }
     transition: all var(--transition-speed) ease;
     margin-bottom: 1rem;
     height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 .course-card:hover {
     transform: translateY(-5px);
@@ -66,10 +68,12 @@ h1, h2, h3 { color: #FFFFFF !important; font-weight: 600; }
 .course-card h3 {
     font-size: 1.1rem;
     margin-bottom: 0.5rem;
+    color: var(--text-color) !important;
 }
 .course-card p {
     font-size: 0.9rem;
     color: var(--text-secondary-color);
+    word-break: break-all;
 }
 
 
@@ -114,12 +118,12 @@ section[data-testid="stSidebar"] {
     transform: scale(0.98);
 }
 /* Nút chính (submit) */
-.stForm .stButton>button {
+.stForm .stButton>button, .stButton>button[kind="secondary"] {
     background-color: var(--primary-color);
     color: white;
     border: none;
 }
-.stForm .stButton>button:hover {
+.stForm .stButton>button:hover, .stButton>button[kind="secondary"]:hover {
     background-color: var(--primary-color-hover);
     color: white;
 }

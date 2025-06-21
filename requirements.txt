@@ -8,3 +8,4 @@ requests
 tiktoken
 python-dotenv
 youtube-transcript-api
+pysqlite3-binary

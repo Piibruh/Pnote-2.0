@@ -49,6 +49,7 @@ def display_sidebar():
                     
                     # --- BỔ SUNG: Logic lưu trữ file vật lý ---
                     # Tạo thư mục riêng cho từng khóa học để quản lý file dễ dàng
+                    # Đường dẫn này sẽ là data/ten-khoa-hoc-da-slugify
                     course_data_path = os.path.join("data", course_id)
                     os.makedirs(course_data_path, exist_ok=True)
                     
@@ -70,6 +71,8 @@ def display_sidebar():
                                 if text:
                                     course_manager_service.add_document(course_id, text, source_name)
                                     processed_count += 1
+                                else:
+                                    st.error(f"Không thể xử lý file: {uploaded_file.name}")
                     
                     # 2. Xử lý URL (không cần lưu file)
                     if url_input:
@@ -77,6 +80,9 @@ def display_sidebar():
                         if text:
                             course_manager_service.add_document(course_id, text, source_name)
                             processed_count += 1
+                        else:
+                            st.error("Không thể xử lý URL được cung cấp.")
+
                     
                     # 3. Xử lý văn bản dán vào (không cần lưu file)
                     if pasted_text:
@@ -84,6 +90,8 @@ def display_sidebar():
                         if text:
                             course_manager_service.add_document(course_id, text, source_name)
                             processed_count += 1
+                        else:
+                             st.error("Không thể xử lý văn bản đã dán.")
                     
                     # Thông báo kết quả
                     if processed_count > 0:
@@ -97,24 +105,58 @@ def display_sidebar():
         st.markdown("---")
         st.header("🛠️ AI Toolkit", anchor=False)
         
-        # Các công cụ AI (Tóm tắt, Quiz, Từ khóa) giữ nguyên logic
         with st.expander("📄 Tóm tắt Khóa học"):
-            # ... (Giữ nguyên code)
-            pass
+            if st.button("Tạo Tóm Tắt", use_container_width=True, key="summarize_btn"):
+                with st.spinner("AI đang đọc và tóm tắt toàn bộ tài liệu..."):
+                    summary = ai_service.summarize_course(st.session_state.current_course_id)
+                    st.session_state[f"summary_{st.session_state.current_course_id}"] = summary
+            
+            summary_key = f"summary_{st.session_state.current_course_id}"
+            if summary_key in st.session_state:
+                st.text_area("Bản tóm tắt:", value=st.session_state[summary_key], height=200, key=f"summary_output_{st.session_state.current_course_id}")
+
         with st.expander("❓ Tạo Câu Hỏi Ôn Tập"):
-            # ... (Giữ nguyên code)
-            pass
+            num_questions = st.slider("Số lượng câu hỏi:", 3, 10, 5, key="quiz_slider")
+            if st.button("Bắt đầu Tạo Quiz", use_container_width=True, key="quiz_btn"):
+                 with st.spinner("AI đang soạn câu hỏi cho bạn..."):
+                    quiz = ai_service.generate_quiz(st.session_state.current_course_id, num_questions)
+                    st.session_state[f"quiz_{st.session_state.current_course_id}"] = quiz
+            
+            quiz_key = f"quiz_{st.session_state.current_course_id}"
+            if quiz_key in st.session_state and isinstance(st.session_state[quiz_key], list):
+                for i, q in enumerate(st.session_state[quiz_key]):
+                    st.write(f"**Câu {i+1}:** {q['question']}")
+                    st.radio("Chọn đáp án:", options=q['options'], key=f"q_{st.session_state.current_course_id}_{i}")
+
         with st.expander("🔑 Trích Xuất Từ Khóa"):
-            # ... (Giữ nguyên code)
-            pass
+            if st.button("Tìm Từ Khóa Chính", use_container_width=True, key="keyword_btn"):
+                with st.spinner("AI đang phân tích các khái niệm..."):
+                    keywords = ai_service.extract_keywords(st.session_state.current_course_id)
+                    st.session_state[f"keywords_{st.session_state.current_course_id}"] = keywords
+            
+            keyword_key = f"keywords_{st.session_state.current_course_id}"
+            if keyword_key in st.session_state and st.session_state[keyword_key]:
+                st.info(", ".join(st.session_state[keyword_key]))
 
         # --- Tùy chọn Nâng cao và Điều hướng ---
         st.markdown("<hr style='margin: 1rem 0;'>", unsafe_allow_html=True)
         with st.expander("⚠️ Tùy chọn Nâng cao"):
             st.warning("Hành động này không thể hoàn tác!")
             if st.button("Xóa Khóa Học Này", use_container_width=True, type="primary"):
-                # ... (Giữ nguyên code)
-                pass
+                course_to_delete_id = st.session_state.current_course_id
+                course_to_delete_name = st.session_state.current_course_name
+                with st.spinner(f"Đang xóa khóa học '{course_to_delete_name}'..."):
+                    success, message = course_manager_service.delete_course(course_to_delete_id)
+                    if success:
+                        st.session_state.courses = [c for c in st.session_state.courses if c['id'] != course_to_delete_id]
+                        # Xóa các state liên quan để giải phóng bộ nhớ
+                        for key in list(st.session_state.keys()):
+                            if key.endswith(course_to_delete_id):
+                                del st.session_state[key]
+                        st.success(message)
+                        time.sleep(1); st.switch_page("app.py")
+                    else:
+                        st.error(message)
 
         st.markdown("<hr style='margin: 1rem 0;'>", unsafe_allow_html=True)
         if st.button("⬅️ Trở về Dashboard", use_container_width=True):

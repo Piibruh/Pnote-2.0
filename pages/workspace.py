@@ -1,8 +1,14 @@
 import streamlit as st
 from config import GEMINI_API_KEY
 from ui.sidebar import display_sidebar
-from core.services import ai_service
-from core.services import course_manager_service # Cần để khởi tạo
+from core.services import ai_service, course_manager_service
+
+# ==============================================================================
+# TRANG WORKSPACE
+# Ghi chú: Đây là không gian làm việc chính, nơi người dùng tương tác với AI,
+# tài liệu và các công cụ khác. Trang này được thiết kế theo bố cục 3 phần
+# (Sidebar, Chat, Ghi chú) để tối ưu hóa năng suất.
+# ==============================================================================
 
 # --- Cấu hình Trang và Kiểm tra State ---
 st.set_page_config(
@@ -17,6 +23,7 @@ with open("styles.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Khởi tạo state toàn cục một cách an toàn.
+# Điều này đảm bảo app không bị lỗi khi người dùng refresh trang workspace.
 if "courses" not in st.session_state:
     st.session_state.courses = course_manager_service.list_courses()
 if "current_course_id" not in st.session_state:
@@ -30,7 +37,7 @@ if not st.session_state.current_course_id:
     st.warning("Vui lòng chọn một khóa học từ Dashboard để bắt đầu.")
     if st.button("Trở về Dashboard", use_container_width=True):
         st.switch_page("app.py")
-    st.stop()
+    st.stop() # Dừng thực thi nếu không có khóa học nào được chọn.
 
 # --- Hiển thị Giao Diện Chính ---
 display_sidebar()
@@ -40,12 +47,13 @@ course_id = st.session_state.current_course_id
 course_name = st.session_state.current_course_name
 
 # Khởi tạo các state dành riêng cho workspace này nếu chưa có.
+# Dùng key động để mỗi khóa học có một lịch sử chat và ghi chú riêng.
 if f"messages_{course_id}" not in st.session_state:
     st.session_state[f"messages_{course_id}"] = [{"role": "assistant", "content": f"Xin chào! Bắt đầu cuộc trò chuyện về **{course_name}**."}]
 if f"notes_{course_id}" not in st.session_state:
     st.session_state[f"notes_{course_id}"] = f"# Ghi chú cho {course_name}\n\n"
 
-# Cấu trúc 2 cột chính: Chat và Ghi chú/Công cụ
+# Cấu trúc 2 cột chính: Chat và Ghi chú.
 chat_col, note_col = st.columns([3, 2])
 
 with chat_col:
@@ -83,5 +91,5 @@ with note_col:
     )
     # Tự động lưu ghi chú khi có thay đổi.
     if note_content != st.session_state[f"notes_{course_id}"]:
-        st.session_state[f"notes_{course_id}"] = note_content
+        st.session_state[f"notes_{course_id}"].append(note_content)
         st.toast("Đã lưu ghi chú!", icon="✅")

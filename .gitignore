@@ -1,0 +1,17 @@
+# File chứa các biến bí mật
+.env
+
+# Thư mục cache của Python
+__pycache__/
+*.pyc
+
+# Thư mục chứa database vector của ChromaDB
+pnote_chroma_db/
+
+# Các file hệ thống của macOS và Windows
+.DS_Store
+Thumbs.db
+
+# Thư mục cấu hình của IDE
+.vscode/
+.idea/

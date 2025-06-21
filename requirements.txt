@@ -1,0 +1,10 @@
+streamlit
+google-generativeai
+chromadb
+pypdf
+python-docx
+beautifulsoup4
+requests
+tiktoken
+python-dotenv
+youtube-transcript-api

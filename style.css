@@ -1,0 +1,154 @@
+/* --- FONT & BIẾN MÀU --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+:root {
+    --font-sans: 'Inter', sans-serif;
+    --primary-color: #FF9800; /* Màu cam cho logo và các điểm nhấn */
+    --primary-color-hover: #FB8C00;
+    --background-color: #171717;
+    --secondary-bg-color: #242424;
+    --text-color: #EAEAEA;
+    --text-secondary-color: #A0A0A0;
+    --sidebar-bg-color: #111111;
+    --border-color: #3A3A3A;
+    --hover-bg-color: #333333;
+    --border-radius: 12px;
+    --transition-speed: 0.2s;
+}
+
+/* --- TỔNG THỂ --- */
+body {
+    font-family: var(--font-sans);
+    background-color: var(--background-color) !important;
+    animation: fadeIn 0.5s ease-out;
+}
+h1, h2, h3 { color: #FFFFFF !important; font-weight: 600; }
+[data-testid="stHeader"] { padding: 0.5rem 0; }
+[data-testid="stDivider"] { margin: 0.5rem 0; }
+
+/* --- LOGO --- */
+.logo-box {
+    width: 50px;
+    height: 50px;
+    background-color: var(--primary-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+.logo-text {
+    font-size: 28px;
+    font-weight: 700;
+    color: white;
+}
+
+/* --- DASHBOARD --- */
+.course-card {
+    background-color: var(--secondary-bg-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-speed) ease;
+    margin-bottom: 1rem;
+    height: 150px;
+}
+.course-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    border-color: var(--primary-color);
+}
+.course-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+.course-card p {
+    font-size: 0.9rem;
+    color: var(--text-secondary-color);
+}
+
+
+/* --- SIDEBAR --- */
+section[data-testid="stSidebar"] {
+    background-color: var(--sidebar-bg-color) !important;
+    border-right: 1px solid var(--border-color);
+}
+
+/* --- GIAO DIỆN CHAT --- */
+[data-testid="stChatMessageContent"] {
+    border-radius: var(--border-radius);
+    padding: 14px 18px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    border: 1px solid transparent;
+}
+[data-testid="stChatMessage"]:has(span[data-testid="chat-avatar-assistant"]) [data-testid="stChatMessageContent"] {
+    background-color: var(--secondary-bg-color);
+}
+[data-testid="stChatMessage"]:has(span[data-testid="chat-avatar-user"]) [data-testid="stChatMessageContent"] {
+    background-color: var(--primary-color);
+    color: #111111;
+    font-weight: 500;
+}
+
+/* --- CÁC COMPONENT KHÁC --- */
+.stButton>button {
+    border-radius: var(--border-radius);
+    background-color: var(--secondary-bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 10px 16px;
+    font-weight: 600;
+    transition: all var(--transition-speed) ease;
+}
+.stButton>button:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: scale(1.03);
+}
+.stButton>button:active {
+    transform: scale(0.98);
+}
+/* Nút chính (submit) */
+.stForm .stButton>button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+.stForm .stButton>button:hover {
+    background-color: var(--primary-color-hover);
+    color: white;
+}
+/* Nút xóa nguy hiểm */
+.stButton>button[kind="primary"] {
+    background-color: #D32F2F;
+    color: white;
+    border: none;
+}
+.stButton>button[kind="primary"]:hover {
+    background-color: #B71C1C;
+    color: white;
+    box-shadow: 0 4px 8px rgba(211, 47, 47, 0.2);
+}
+
+textarea, .stTextInput > div > div > input, .stSelectbox > div {
+    background-color: var(--secondary-bg-color) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius);
+    transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+textarea:focus, .stTextInput > div > div > input:focus, .stSelectbox > div:focus-within {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.3);
+}
+
+/* Thanh cuộn "nịnh mắt" */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--sidebar-bg-color); }
+::-webkit-scrollbar-thumb { background: #4F4F4F; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #666; }

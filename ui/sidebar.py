@@ -1,68 +1,97 @@
-# Ghi chú: File này chỉ chứa code để vẽ thanh sidebar.
 import streamlit as st
 import time
-from core.services import course_manager_service, document_processor_service
-
-def _safe_course_name(name):
-    return "".join(c for c in name if c.isalnum() or c in (' ', '_')).strip().replace(' ', '_').lower()
+from core.services import course_manager_service, document_processor_service, ai_service, slugify
 
 def display_sidebar():
-    """Vẽ toàn bộ nội dung của sidebar và xử lý logic của nó."""
+    """Vẽ sidebar chứa các công cụ AI và quản lý tài liệu cho Workspace."""
     with st.sidebar:
-        st.title("📝 PNote")
-        st.markdown("---")
-        st.header("📚 Quản lý Khóa học")
-        
-        new_course_name = st.text_input("Tên khóa học mới", placeholder="vd: Lịch sử Đảng")
-        if st.button("Tạo Khóa học"):
-            if new_course_name:
-                safe_name = _safe_course_name(new_course_name)
-                if safe_name and safe_name not in st.session_state.courses:
-                    st.session_state.courses.append(safe_name)
-                    st.session_state.current_course = safe_name
-                    st.success(f"Đã tạo '{safe_name}'!")
-                    time.sleep(1)
-                    st.rerun()
-            else:
-                st.warning("Vui lòng nhập tên khóa học.")
-
-        if st.session_state.courses:
-            try:
-                current_index = st.session_state.courses.index(st.session_state.current_course)
-            except (ValueError, TypeError):
-                current_index = 0
-            
-            selected_course = st.selectbox("Chọn khóa học", options=st.session_state.courses, index=current_index)
-            if selected_course != st.session_state.current_course:
-                st.session_state.current_course = selected_course
-                st.rerun()
-        else:
-            st.info("Tạo khóa học để bắt đầu.")
-
+        # --- Logo ---
+        st.markdown(
+            """
+            <div class="logo-box">
+                <span class="logo-text">P</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.title(f"PNote Workspace")
+        st.caption(f"Khóa học: **{st.session_state.get('current_course_name', '')}**")
         st.markdown("---")
 
-        if st.session_state.current_course:
-            st.header(f"➕ Thêm tài liệu")
-            # ĐÃ SỬA: Chấp nhận cả PDF và DOCX
-            uploaded_file = st.file_uploader("1. Tải file (PDF, DOCX)", type=["pdf", "docx"])
+        # --- Thêm tài liệu ---
+        with st.expander("➕ Thêm tài liệu vào khóa học"):
+            uploaded_files = st.file_uploader("1. Tải file (PDF, DOCX)", type=["pdf", "docx"], accept_multiple_files=True)
             url_input = st.text_input("2. Nhập URL (bài báo, YouTube)", placeholder="https://...")
+            pasted_text = st.text_area("3. Dán văn bản vào đây", placeholder="Dán nội dung từ clipboard...")
             
-            if st.button("Xử lý và Thêm"):
-                with st.spinner("⏳ Đang xử lý..."):
-                    source_type, source_data = (None, None)
-                    if uploaded_file:
-                        source_type = uploaded_file.name.split('.')[-1]
-                        source_data = uploaded_file
-                    elif url_input:
-                        source_type = 'url'
-                        source_data = url_input
+            if st.button("Xử lý và Thêm", use_container_width=True):
+                with st.spinner("⏳ Đang xử lý tài liệu..."):
+                    processed_count = 0
+                    sources = []
+                    if uploaded_files: sources.extend([('pdf' if f.name.endswith('.pdf') else 'docx', f) for f in uploaded_files])
+                    if url_input: sources.append(('url', url_input))
+                    if pasted_text: sources.append(('text', pasted_text))
                     
-                    if source_type and source_data:
-                        text, source_name = document_processor_service.extract_text(source_type, source_data)
-                        if text:
-                            chunks_added = course_manager_service.add_document(st.session_state.current_course, text, source_name)
-                            st.success(f"Đã thêm {chunks_added} kiến thức từ '{source_name}'.")
-                        else:
-                            st.error(f"Lỗi: {source_name}")
+                    if not sources:
+                        st.warning("Không có tài liệu nào được cung cấp để xử lý.")
                     else:
-                        st.warning("Vui lòng cung cấp tài liệu.")
+                        for source_type, source_data in sources:
+                            text, source_name = document_processor_service.extract_text(source_type, source_data)
+                            if text:
+                                course_manager_service.add_document(st.session_state.current_course_id, text, source_name)
+                                processed_count += 1
+                        st.success(f"Hoàn tất! Đã xử lý {processed_count} nguồn tài liệu.")
+                        st.info("Hệ thống sẽ mất vài giây để cập nhật. Vui lòng bắt đầu chat.")
+                        time.sleep(1)
+        
+        # --- Công cụ AI ---
+        st.markdown("---")
+        st.header("🛠️ AI Toolkit", anchor=False)
+        
+        with st.expander("📄 Tóm tắt Khóa học"):
+            if st.button("Tạo Tóm Tắt", use_container_width=True, key="summarize_btn"):
+                with st.spinner("AI đang đọc và tóm tắt toàn bộ tài liệu..."):
+                    summary = ai_service.summarize_course(st.session_state.current_course_id)
+                    st.session_state.summary = summary
+            if "summary" in st.session_state and st.session_state.summary:
+                st.text_area("Bản tóm tắt:", value=st.session_state.summary, height=200)
+
+        with st.expander("❓ Tạo Câu Hỏi Ôn Tập"):
+            num_questions = st.slider("Số lượng câu hỏi:", 3, 10, 5)
+            if st.button("Bắt đầu Tạo Quiz", use_container_width=True, key="quiz_btn"):
+                 with st.spinner("AI đang soạn câu hỏi cho bạn..."):
+                    quiz = ai_service.generate_quiz(st.session_state.current_course_id, num_questions)
+                    st.session_state.quiz = quiz
+            if "quiz" in st.session_state and isinstance(st.session_state.quiz, list):
+                for i, q in enumerate(st.session_state.quiz):
+                    st.write(f"**Câu {i+1}:** {q['question']}")
+                    st.radio("Chọn đáp án:", options=q['options'], key=f"q_{i}")
+
+        with st.expander("🔑 Trích Xuất Từ Khóa"):
+            if st.button("Tìm Từ Khóa Chính", use_container_width=True, key="keyword_btn"):
+                with st.spinner("AI đang phân tích các khái niệm..."):
+                    keywords = ai_service.extract_keywords(st.session_state.current_course_id)
+                    st.session_state.keywords = keywords
+            if "keywords" in st.session_state and st.session_state.keywords:
+                st.info(", ".join(st.session_state.keywords))
+
+        # --- Tùy chọn Nâng cao ---
+        st.markdown("---")
+        with st.expander("⚠️ Tùy chọn Nâng cao"):
+            st.warning("Hành động này không thể hoàn tác!")
+            if st.button("Xóa Khóa Học Này", use_container_width=True, type="primary"):
+                course_to_delete_id = st.session_state.current_course_id
+                course_to_delete_name = st.session_state.current_course_name
+                with st.spinner(f"Đang xóa khóa học '{course_to_delete_name}'..."):
+                    success, message = course_manager_service.delete_course(course_to_delete_id)
+                    if success:
+                        st.session_state.courses = [c for c in st.session_state.courses if c['id'] != course_to_delete_id]
+                        st.success(message)
+                        time.sleep(1); st.switch_page("app.py")
+                    else:
+                        st.error(message)
+
+        # --- Nút điều hướng ---
+        st.markdown("---")
+        if st.button("⬅️ Trở về Dashboard", use_container_width=True):
+            st.switch_page("app.py")

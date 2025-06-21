@@ -5,6 +5,7 @@
 # ==============================================================================
 # ĐOẠN CODE BẮT BUỘC ĐỂ SỬA LỖI SQLITE3 TRÊN STREAMLIT CLOUD
 # Đoạn code này phải được đặt ở ĐẦU TIÊN, trước tất cả các import khác.
+# Nó ép buộc Python sử dụng phiên bản SQLite mới mà chúng ta đã cài.
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
@@ -27,11 +28,18 @@ from config import (
     TEXT_CHUNK_OVERLAP, VECTOR_DB_SEARCH_RESULTS, CHROMA_DB_PATH
 )
 
-def slugify(value):
+def slugify(value: str) -> str:
     """
     Chuyển đổi chuỗi Unicode (bao gồm Tiếng Việt) thành một chuỗi an toàn
     để dùng làm ID hoặc tên file, tránh lỗi khi tương tác với hệ thống.
-    Đây là một hàm cực kỳ quan trọng để đảm bảo tính ổn định.
+    Đây là một hàm cực kỳ quan trọng để đảm bảo tính ổn định của hệ thống.
+
+    Args:
+        value (str): Chuỗi đầu vào cần xử lý.
+
+    Returns:
+        str: Chuỗi an toàn, đã được chuyển thành chữ thường, không dấu,
+             và thay thế khoảng trắng bằng dấu gạch ngang.
     """
     value = normalize('NFKD', str(value)).encode('ascii', 'ignore').decode('ascii')
     value = re.sub(r'[^\w\s-]', '', value).strip().lower()
@@ -39,8 +47,11 @@ def slugify(value):
     return value
 
 # --- Khởi tạo các dịch vụ toàn cục mà ứng dụng sẽ sử dụng ---
+# Cấu hình API key cho thư viện của Google.
 genai.configure(api_key=GEMINI_API_KEY)
+# Khởi tạo client kết nối tới ChromaDB, dữ liệu sẽ được lưu trên đĩa.
 chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+# Khởi tạo mô hình ngôn ngữ chính sẽ được sử dụng cho các tác vụ AI.
 generative_model = genai.GenerativeModel(GENERATIVE_MODEL_NAME)
 
 class DocumentProcessor:
@@ -49,7 +60,18 @@ class DocumentProcessor:
     từ các nguồn khác nhau (PDF, DOCX, URL, YouTube, Text).
     Mỗi phương thức đều có error handling riêng để đảm bảo sự ổn định.
     """
-    def extract_text(self, source_type, source_data):
+    def extract_text(self, source_type: str, source_data: any) -> tuple[str | None, str]:
+        """
+        Phương thức chính để trích xuất văn bản.
+
+        Args:
+            source_type (str): Loại nguồn ('pdf', 'docx', 'url', 'text').
+            source_data (any): Dữ liệu nguồn (file object, chuỗi URL, chuỗi văn bản).
+
+        Returns:
+            tuple[str | None, str]: Một tuple chứa (nội dung văn bản, tên nguồn đã được xử lý).
+                                     Trả về (None, thông báo lỗi) nếu thất bại.
+        """
         try:
             if not source_data:
                 return None, "Nguồn dữ liệu rỗng."
@@ -78,7 +100,7 @@ class DocumentProcessor:
                     return text, f"youtube-{video_id}"
 
                 response = requests.get(source_data, headers={'User-Agent': 'Mozilla/5.0'})
-                response.raise_for_status() # Báo lỗi nếu request không thành công
+                response.raise_for_status()
                 soup = BeautifulSoup(response.content, 'html.parser')
                 for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
                     tag.decompose()
@@ -96,20 +118,20 @@ class CourseManager:
     Nó xử lý việc tạo, xóa, thêm tài liệu, và liệt kê các khóa học.
     Đây là lớp trừu tượng hóa việc giao tiếp với cơ sở dữ liệu.
     """
-    def __init__(self, client):
+    def __init__(self, client: chromadb.Client):
         self.client = client
 
-    def list_courses(self):
-        # Trả về cả tên và metadata để có thể hiển thị tên gốc
+    def list_courses(self) -> list[dict]:
+        """Liệt kê tất cả các khóa học, trả về danh sách các dictionary."""
         collections = self.client.list_collections()
         course_list = []
         for col in collections:
-            # Metadata chứa tên gốc của khóa học
             name = col.metadata.get("display_name", col.name) if col.metadata else col.name
             course_list.append({"id": col.name, "name": name})
         return course_list
 
-    def get_course_details(self, course_id):
+    def get_course_details(self, course_id: str) -> dict | None:
+        """Lấy chi tiết về một khóa học cụ thể."""
         try:
             collection = self.client.get_collection(name=course_id)
             count = collection.count()
@@ -117,11 +139,12 @@ class CourseManager:
         except ValueError:
             return None
 
-    def get_or_create_course_collection(self, course_id, display_name):
-        # Lưu tên gốc vào metadata
+    def get_or_create_course_collection(self, course_id: str, display_name: str) -> chromadb.Collection:
+        """Tạo một khóa học mới hoặc lấy khóa học đã có, lưu tên gốc vào metadata."""
         return self.client.get_or_create_collection(name=course_id, metadata={"display_name": display_name})
     
-    def delete_course(self, course_id):
+    def delete_course(self, course_id: str) -> tuple[bool, str]:
+        """Xóa một khóa học khỏi database."""
         try:
             self.client.delete_collection(name=course_id)
             return True, f"Đã xóa thành công khóa học."
@@ -130,7 +153,8 @@ class CourseManager:
         except Exception as e:
             return False, f"Lỗi không xác định khi xóa: {e}"
 
-    def add_document(self, course_id, document_text, source_name):
+    def add_document(self, course_id: str, document_text: str, source_name: str) -> int:
+        """Thêm một tài liệu đã được xử lý vào một khóa học."""
         collection = self.client.get_collection(name=course_id)
         chunks = self._split_text(document_text)
         if not chunks: return 0
@@ -138,7 +162,8 @@ class CourseManager:
         collection.add(documents=chunks, ids=doc_ids)
         return len(chunks)
 
-    def _split_text(self, text):
+    def _split_text(self, text: str) -> list[str]:
+        """Hàm nội bộ để chia nhỏ văn bản thành các chunks."""
         tokenizer = tiktoken.get_encoding("cl100k_base")
         tokens = tokenizer.encode(text)
         chunks = []
@@ -151,11 +176,11 @@ class AIService:
     Lớp này chứa tất cả các logic nghiệp vụ liên quan đến AI.
     Mỗi chức năng là một phương thức riêng biệt với prompt được thiết kế cẩn thận.
     """
-    def __init__(self, course_manager):
+    def __init__(self, course_manager: CourseManager):
         self.course_manager = course_manager
 
-    def _get_full_context(self, course_id, max_chunks=20):
-        """Lấy toàn bộ hoặc một phần lớn ngữ cảnh của khóa học."""
+    def _get_full_context(self, course_id: str, max_chunks: int = 20) -> str | None:
+        """Hàm nội bộ để lấy toàn bộ hoặc một phần lớn ngữ cảnh của khóa học."""
         try:
             collection = self.course_manager.client.get_collection(name=course_id)
             if collection.count() == 0: return None
@@ -164,7 +189,7 @@ class AIService:
         except Exception:
             return None
 
-    def get_chat_answer(self, course_id, question):
+    def get_chat_answer(self, course_id: str, question: str) -> str:
         """Hàm trả lời câu hỏi RAG, đã được tối ưu và sửa lỗi logic."""
         try:
             collection = self.course_manager.client.get_collection(name=course_id)
@@ -184,7 +209,7 @@ class AIService:
         except Exception as e:
             return f"Đã xảy ra một lỗi không mong muốn khi truy vấn: {str(e)}"
 
-    def summarize_course(self, course_id):
+    def summarize_course(self, course_id: str) -> str:
         """Tạo bản tóm tắt cho toàn bộ khóa học."""
         context = self._get_full_context(course_id)
         if not context:
@@ -197,7 +222,7 @@ class AIService:
         except Exception as e:
             return f"Lỗi khi tóm tắt: {e}"
 
-    def generate_quiz(self, course_id, num_questions=5):
+    def generate_quiz(self, course_id: str, num_questions: int = 5) -> list | str:
         """Tạo câu hỏi trắc nghiệm từ nội dung khóa học."""
         context = self._get_full_context(course_id)
         if not context:
@@ -211,7 +236,7 @@ class AIService:
         except Exception:
             return "Rất tiếc, tôi không thể tạo câu hỏi từ tài liệu này. Vui lòng thử lại với tài liệu khác."
 
-    def extract_keywords(self, course_id, num_keywords=10):
+    def extract_keywords(self, course_id: str, num_keywords: int = 10) -> list | str:
         """Trích xuất các từ khóa/khái niệm quan trọng."""
         context = self._get_full_context(course_id)
         if not context:
@@ -225,7 +250,7 @@ class AIService:
         except Exception as e:
             return f"Lỗi khi trích xuất từ khóa: {e}"
 
-    def translate_text(self, text_to_translate, target_language="Tiếng Việt"):
+    def translate_text(self, text_to_translate: str, target_language: str = "Tiếng Việt") -> str:
         """Dịch văn bản bằng Gemini."""
         if not text_to_translate: return ""
         prompt = f"Translate the following text to {target_language}. Respond with only the translated text, no additional explanations:\n\n{text_to_translate}"

@@ -1,17 +1,22 @@
-# File chứa các biến bí mật
+# File chứa các biến môi trường và các thông tin bí mật
 .env
+*.env.*
 
 # Thư mục cache của Python
 __pycache__/
 *.pyc
+*.pyo
 
-# Thư mục chứa database vector của ChromaDB
+# Thư mục chứa database vector của ChromaDB (có thể rất lớn)
 pnote_chroma_db/
 
-# Các file hệ thống của macOS và Windows
+# Các file hệ thống của các hệ điều hành
 .DS_Store
 Thumbs.db
 
 # Thư mục cấu hình của IDE
 .vscode/
 .idea/
+
+# BỔ SUNG: Bỏ qua thư mục chứa dữ liệu người dùng tải lên
+/data/

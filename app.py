@@ -2,33 +2,47 @@ import streamlit as st
 from core.services import course_manager_service, slugify
 import time
 
+# --- Cấu hình Trang Chính ---
+# Thiết lập các thông tin cơ bản cho trang Dashboard.
 st.set_page_config(
     page_title="PNote Dashboard",
     page_icon="📝",
     layout="wide",
-    initial_sidebar_state="collapsed" # Ẩn sidebar trên trang này
+    initial_sidebar_state="collapsed" # Ẩn sidebar trên trang này vì không cần thiết.
 )
 
-# --- Load CSS ---
+# --- Load CSS và Khởi tạo State ---
+# Inject file CSS để tùy chỉnh giao diện.
 with open("styles.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# --- Khởi tạo State ---
+# Khởi tạo session state để lưu trữ dữ liệu giữa các lần tương tác.
 if "courses" not in st.session_state:
     st.session_state.courses = course_manager_service.list_courses()
 
 # --- Giao diện Dashboard ---
-st.title("My Workspace")
-st.text("Chào mừng trở lại! Chọn một khóa học để bắt đầu hoặc tạo một khóa học mới.")
+# Phần logo và tiêu đề chính.
+st.markdown(
+    """
+    <div class="logo-box-large">
+        <span class="logo-text-large">P</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+st.title("PNote Workspace")
+st.text("Chào mừng trở lại! Chọn một khóa học để bắt đầu hoặc tạo một không gian làm việc mới.")
 st.markdown("---")
 
-# --- Phần tạo khóa học mới ---
+# --- Form Tạo Khóa Học Mới ---
+# Sử dụng expander để có thể thu gọn, tiết kiệm không gian.
 with st.expander("➕ Tạo khóa học mới", expanded=True):
     with st.form("new_course_form"):
         col1, col2 = st.columns([3, 1])
         with col1:
-            new_course_name_input = st.text_input("Tên khóa học", placeholder="vd: Lịch sử Đảng Cộng sản Việt Nam")
+            new_course_name_input = st.text_input("Tên khóa học (hỗ trợ Tiếng Việt)", placeholder="vd: Lịch sử Đảng Cộng sản Việt Nam")
         with col2:
+            # Nút submit được đặt cùng hàng để giao diện gọn gàng.
             submitted = st.form_submit_button("Tạo Ngay", use_container_width=True)
         
         if submitted:
@@ -42,23 +56,30 @@ with st.expander("➕ Tạo khóa học mới", expanded=True):
                     st.warning(f"Khóa học '{new_course_name_input}' đã tồn tại.")
                 else:
                     with st.spinner(f"Đang tạo khóa học '{new_course_name_input}'..."):
-                        # Lưu cả tên gốc vào metadata
+                        # Lưu cả tên gốc vào metadata để hiển thị đẹp hơn.
                         course_manager_service.get_or_create_course_collection(safe_name, new_course_name_input)
                         st.session_state.courses.append({"id": safe_name, "name": new_course_name_input})
                         st.success(f"Đã tạo '{new_course_name_input}'!")
-                        time.sleep(1); st.rerun()
+                        
+                        # Tự động chuyển trang sau khi tạo thành công.
+                        st.session_state.current_course_id = safe_name
+                        st.session_state.current_course_name = new_course_name_input
+                        time.sleep(1)
+                        st.switch_page("pages/workspace.py")
 
 st.markdown("---")
+st.header("Danh sách khóa học của bạn", anchor=False)
 
 # --- Hiển thị các khóa học dưới dạng card ---
 if not st.session_state.courses:
     st.info("Bạn chưa có khóa học nào. Hãy tạo một khóa học mới ở trên để bắt đầu!")
 else:
+    # Tạo layout dạng lưới, tối đa 4 cột để tối ưu không gian.
     cols = st.columns(4)
     for i, course in enumerate(st.session_state.courses):
         col = cols[i % 4]
         with col:
-            # Dùng st.markdown để inject class CSS cho card
+            # Dùng st.markdown để inject class CSS cho card, cho phép tùy chỉnh giao diện sâu hơn.
             st.markdown(
                 f"""
                 <div class="course-card">

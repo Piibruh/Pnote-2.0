@@ -2,6 +2,14 @@ import streamlit as st
 from core.services import course_manager_service, slugify
 import time
 
+# ==============================================================================
+# TRANG CHÍNH (DASHBOARD)
+# Ghi chú: Đây là trang đầu tiên người dùng nhìn thấy. Nó có nhiệm vụ:
+# 1. Hiển thị tất cả các khóa học đã tạo.
+# 2. Cho phép tạo một khóa học mới.
+# 3. Điều hướng người dùng đến trang Workspace khi họ chọn một khóa học.
+# ==============================================================================
+
 # --- Cấu hình Trang Chính ---
 # Thiết lập các thông tin cơ bản cho trang Dashboard.
 st.set_page_config(
@@ -12,16 +20,17 @@ st.set_page_config(
 )
 
 # --- Load CSS và Khởi tạo State ---
-# Inject file CSS để tùy chỉnh giao diện.
+# Inject file CSS để tùy chỉnh giao diện toàn bộ ứng dụng.
 with open("styles.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Khởi tạo session state để lưu trữ dữ liệu giữa các lần tương tác.
+# Logic này đảm bảo state chỉ được khởi tạo một lần duy nhất.
 if "courses" not in st.session_state:
     st.session_state.courses = course_manager_service.list_courses()
 
 # --- Giao diện Dashboard ---
-# Phần logo và tiêu đề chính.
+# Phần logo và tiêu đề chính, tạo ấn tượng ban đầu.
 st.markdown(
     """
     <div class="logo-box-large">
@@ -35,14 +44,13 @@ st.text("Chào mừng trở lại! Chọn một khóa học để bắt đầu h
 st.markdown("---")
 
 # --- Form Tạo Khóa Học Mới ---
-# Sử dụng expander để có thể thu gọn, tiết kiệm không gian.
+# Sử dụng expander để có thể thu gọn, tiết kiệm không gian và làm giao diện sạch hơn.
 with st.expander("➕ Tạo khóa học mới", expanded=True):
     with st.form("new_course_form"):
         col1, col2 = st.columns([3, 1])
         with col1:
             new_course_name_input = st.text_input("Tên khóa học (hỗ trợ Tiếng Việt)", placeholder="vd: Lịch sử Đảng Cộng sản Việt Nam")
         with col2:
-            # Nút submit được đặt cùng hàng để giao diện gọn gàng.
             submitted = st.form_submit_button("Tạo Ngay", use_container_width=True)
         
         if submitted:

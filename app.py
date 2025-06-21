@@ -51,6 +51,7 @@ with st.expander("➕ Tạo khóa học mới", expanded=True):
         with col1:
             new_course_name_input = st.text_input("Tên khóa học (hỗ trợ Tiếng Việt)", placeholder="vd: Lịch sử Đảng Cộng sản Việt Nam")
         with col2:
+            # Nút submit được đặt cùng hàng để giao diện gọn gàng.
             submitted = st.form_submit_button("Tạo Ngay", use_container_width=True)
         
         if submitted:
@@ -58,8 +59,8 @@ with st.expander("➕ Tạo khóa học mới", expanded=True):
                 st.warning("Vui lòng nhập tên khóa học.")
             else:
                 safe_name = slugify(new_course_name_input)
-                if len(safe_name) < 3:
-                    st.error("Lỗi: Tên khóa học phải có ít nhất 3 ký tự (chữ hoặc số).")
+                if len(safe_name) < 3 or len(safe_name) > 63:
+                    st.error("Lỗi: Tên không hợp lệ (Yêu cầu: độ dài 3-63 ký tự, không chứa ký tự đặc biệt).")
                 elif any(course['id'] == safe_name for course in st.session_state.courses):
                     st.warning(f"Khóa học '{new_course_name_input}' đã tồn tại.")
                 else:
